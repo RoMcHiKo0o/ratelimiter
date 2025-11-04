@@ -1,0 +1,23 @@
+{
+  "sources": [
+    {
+      "identifier": {
+        "url": "http://127.0.0.1:8888/limited2secs"
+      },
+      "rate_limit": {
+        "interval": 0.5,
+        "RPD": 8
+      }
+    },
+    {
+      "identifier": {
+        "url": "http://128.0.0.1:8888/test2",
+        "method": "POST"
+      },
+      "rate_limit": {
+        "interval": 0.5,
+        "RPD": 100
+      }
+    }
+  ]
+}
