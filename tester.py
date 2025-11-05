@@ -4,6 +4,8 @@ from threading import Thread
 
 import aiohttp
 import requests
+from aiohttp import ClientTimeout
+
 
 # for i in range(4):
 #     resp = requests.get('http://127.0.0.1:8000',timeout=15)
@@ -29,8 +31,8 @@ async def req(session: aiohttp.ClientSession,i):
 async def spam():
     tasks = []
     # loop = asyncio.new_event_loop()
-    async with aiohttp.ClientSession() as session:
-        for i in range(10):
+    async with aiohttp.ClientSession(timeout=ClientTimeout(123521343)) as session:
+        for i in range(1):
             tasks.append(req(session, i))
             # await req(session, i)
         await asyncio.gather(*tasks)
