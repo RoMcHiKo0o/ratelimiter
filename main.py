@@ -39,7 +39,6 @@ load_configs()
 
 @app.post("/")
 async def hello(request: Request):
-    print(time.time())
     data = await request.json()
     req = data['request']
     print(req['json'])
