@@ -7,7 +7,7 @@ from fastapi import FastAPI, Request, Response
 import aiohttp
 from fastapi.responses import JSONResponse
 
-API_URL = "http://127.0.0.1:8888/"
+API_URL = "http://127.0.0.1:8889/"
 
 app = FastAPI()
 
@@ -21,6 +21,7 @@ class API:
         self.counter = 0
         self.rpd = config["rate_limit"].get("RPD",-1)
         self.lock = asyncio.Lock()
+        self.last_call = 0.
 
 
 def identifier_as_key(data: dict):
@@ -44,11 +45,14 @@ async def hello(request: Request):
     print(req['json'])
     api = API_registry[identifier_as_key(data['identifier'])]
     time_sleep = api.interval
+    if api.counter == api.rpd:
+        return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
     async with api.lock:
+
         print(time.time())
-        await asyncio.sleep(time_sleep)
-        if api.counter == api.rpd:
-            return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
+        to_sleep = max(0., time_sleep - (time.time() - api.last_call))
+        await asyncio.sleep(to_sleep)
+        api.last_call = time.time()
         api.counter = api.counter + 1
         API_registry[identifier_as_key(data['identifier'])] = api
         try:
@@ -58,7 +62,6 @@ async def hello(request: Request):
         except Exception as e:
             r = JSONResponse(content={"error": f"{type(e)} {str(e)}"})
         return r
-
 
 #
 # @app.post("/admin/api")

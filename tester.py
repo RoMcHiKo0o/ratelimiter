@@ -13,10 +13,10 @@ import requests
 async def req(session: aiohttp.ClientSession,i):
     async with session.post('http://127.0.0.1:8000', json={
         'identifier': {
-            'url': 'http://127.0.0.1:8888/limited2secs'
+            'url': 'http://127.0.0.1:8889/limited2secs'
         },
         'request': {
-            'url': 'http://127.0.0.1:8888/limited2secs/slow',
+            'url': 'http://127.0.0.1:8889/limited2secs/slow',
             'method': 'GET',
             'json': {
                 'msg': f'Hello world {i}'

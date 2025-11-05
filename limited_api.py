@@ -34,8 +34,8 @@ async def hello(request: Request):
 @app.get("/limited2secs/slow")
 @limiter.limit("2/second")
 async def hello(request: Request):
-    await asyncio.sleep(2)
     print(time.time())
+    await asyncio.sleep(10)
     print(await request.json())
 
     return JSONResponse(status_code=200, content=await request.json())
