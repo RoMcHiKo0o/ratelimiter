@@ -42,4 +42,4 @@ async def hello(request: Request):
 
 
 if __name__ == "__main__":
-    uvicorn.run(app, reload=True, port=8888)
+    uvicorn.run(app, reload=True, port=8889)
