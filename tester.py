@@ -32,7 +32,7 @@ async def spam():
     tasks = []
     # loop = asyncio.new_event_loop()
     async with aiohttp.ClientSession(timeout=ClientTimeout(123521343)) as session:
-        for i in range(1):
+        for i in range(7):
             tasks.append(req(session, i))
             # await req(session, i)
         await asyncio.gather(*tasks)
