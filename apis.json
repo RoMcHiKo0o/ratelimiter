@@ -5,7 +5,7 @@
         "url": "http://127.0.0.1:8889/limited2secs"
       },
       "rate_limit": {
-        "interval": 12,
+        "interval": 0.5,
         "RPD": -1
       }
     },

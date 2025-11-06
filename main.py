@@ -2,6 +2,7 @@ import asyncio
 import json
 import logging
 import time
+from datetime import datetime
 
 import uvicorn
 from fastapi import FastAPI, Request, Response
@@ -52,22 +53,22 @@ async def hello(request: Request):
 
 
     async with api.lock:
-        logger.info(f"acquire at {time.time()} by request {req['json']['msg']}")
+        logger.info(f"{datetime.fromtimestamp(time.time())} acquire by request {req['json']['msg']}")
         # to_sleep = max(0., time_sleep - (time.time() - api.last_call))
         # await asyncio.sleep(to_sleep)
         # api.last_call = time.time()
         await asyncio.sleep(time_sleep)
         api.counter = api.counter + 1
         API_registry[identifier_as_key(data['identifier'])] = api
-    logger.info(f"release at {time.time()} by request {req['json']['msg']}")
+    logger.info(f"{datetime.fromtimestamp(time.time())} release by request {req['json']['msg']}")
     try:
-        logger.info(f"session open at {time.time()} by request {req['json']['msg']}")
+        logger.info(f"{datetime.fromtimestamp(time.time())} session open by request {req['json']['msg']}")
         async with aiohttp.ClientSession() as session:
-            logger.info(f"making request at {time.time()} by request {req['json']['msg']}")
+            logger.info(f"{datetime.fromtimestamp(time.time())} making request by request {req['json']['msg']}")
             async with session.request(**req) as resp:
-                logger.info(f"got response at {time.time()} by request {req['json']['msg']}")
+                logger.info(f"{datetime.fromtimestamp(time.time())} got response by request {req['json']['msg']}")
                 r = JSONResponse(status_code=resp.status, content=await resp.json(), headers=resp.headers)
-                logger.info(f"got response 100% at {time.time()} by request {req['json']['msg']}")
+                logger.info(f"{datetime.fromtimestamp(time.time())} got response 100% by request {req['json']['msg']}")
     except Exception as e:
         r = JSONResponse(content={"error": f"{type(e)} {str(e)}"})
 
