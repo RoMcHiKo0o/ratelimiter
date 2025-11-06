@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import time
+from contextlib import asynccontextmanager
 
 import uvicorn
 from fastapi import FastAPI
@@ -13,11 +14,19 @@ from fastapi.requests import Request
 
 limiter = Limiter(key_func=get_remote_address)
 logger = logging.getLogger(__name__)
-app = FastAPI()
-app.state.limiter = limiter
 
 
+
+@asynccontextmanager
+async def lifespan(app):
+    print(asyncio.all_tasks())
+    yield
+    logger.info('DONE')
+    print(asyncio.all_tasks())
 # app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+app = FastAPI(lifespan=lifespan)
+app.state.limiter = limiter
 
 @app.exception_handler(RateLimitExceeded)
 async def exc_handler(request: Request, exc: RateLimitExceeded):
@@ -35,7 +44,7 @@ async def hello(request: Request):
 @limiter.limit("0.5/second")
 async def hello(request: Request):
     print(time.time())
-    await asyncio.sleep(10)
+    await asyncio.sleep(3)
     print(await request.json())
 
     return JSONResponse(status_code=200, content=await request.json())
