@@ -11,31 +11,22 @@ from fastapi import FastAPI, Request, Response
 import aiohttp
 from fastapi.responses import JSONResponse
 
-API_URL = "http://127.0.0.1:8889/"
 API_registry = {}
 stop_event = None
+logger = logging.getLogger('uvicorn.error')
 
 
 @asynccontextmanager
 async def lifespan(app):
     global stop_event
-    stop_event = threading.Event()
-    print(asyncio.all_tasks())
-    thread = threading.Thread(target=load_configs)
-    thread.start()
-    print(asyncio.all_tasks())
+    stop_event = asyncio.Event()
+    load_configs()
     yield
     logger.info('setting stop event')
     stop_event.set()
-    logger.info('joining thread')
-    print(asyncio.all_tasks())
-    thread.join(5.5)
-    logger.info('joining thread finished')
-    print(asyncio.all_tasks())
+    await asyncio.sleep(0)
     logger.info('DONE')
 
-
-logger = logging.getLogger('uvicorn.error')
 
 app = FastAPI(lifespan=lifespan)
 
@@ -49,56 +40,79 @@ class API:
         self.queue = asyncio.Queue()
 
     async def worker(self):
+        logger.info(F'worker is created')
+        tasks = {}
         while not stop_event.is_set():
-            print(self.identifier)
+            # logger.info(F'worker is working')
+            for fut,task in list(tasks.items()):
+                if task.done():
+                    tasks.pop(fut)
+                    fut.set_result(await task)
+                    self.queue.task_done()
             if not self.queue.empty():
                 fut, req = await self.queue.get()
+                logger.info(F'worker found task {req}')
                 fut: asyncio.Future
                 await asyncio.sleep(self.interval)
                 self.counter = self.counter + 1
-                result = await make_request(req)
-                fut.set_result(result)
-                self.queue.task_done()
+                logger.info(F'worker have slept for {req}')
+                task = asyncio.create_task(make_request(req))
+                logger.info(F'worker have created task {req}')
+                tasks[fut] = task
+                logger.info(F'worker got result for {req}')
+
             else:
-                await asyncio.sleep(1)
+                # logger.info(F'worker waits')
+                # for x in asyncio.all_tasks():
+                #     logger.info(x.get_coro())
+                # for k,v in tasks:
+                #     k.set_result(await v)
+                #     self.queue.task_done()
+                await asyncio.sleep(0)
         logger.info(f"{self.identifier} вышел с лупа")
-        print(asyncio.all_tasks())
+        # logger.info(asyncio.all_tasks())
 
 
 def identifier_as_key(data: dict):
     return json.dumps(data, sort_keys=True, ensure_ascii=False)
 
 
-def load_configs():
+def load_configs() -> list[asyncio.Task]:
     # Создаем новый event loop для текущего потока
     global API_registry
 
-    loop = asyncio.new_event_loop()
-    asyncio.set_event_loop(loop)
+    # loop = asyncio.new_event_loop()
+    # asyncio.set_event_loop(loop)
 
     with open('apis.json', 'r', encoding='utf8') as f:
         data = json.load(f)
-    print(data)
+    logger.info(data)
     API_registry = {identifier_as_key(x["identifier"]): API(x) for x in data['sources']}
 
-    # Привязываем loop к текущему потоку
-
-    # Добавляем задачи в новый event loop
-    for api in API_registry.values():
-        loop.create_task(api.worker())
-
-    # Запускаем все задачи в event loop
-    loop.run_forever()
+    return [asyncio.create_task(api.worker()) for api in API_registry.values()]
 
 
 async def make_request(req):
+    # logger.info(f"{datetime.fromtimestamp(time.time())} session open by request {req['json']['msg']}")
+    # logger.info(f"{datetime.fromtimestamp(time.time())} making request by request {req['json']['msg']}")
+    # for t in asyncio.all_tasks():
+    #     logger.info(t.get_coro())
+    # await asyncio.sleep(5)
+    # logger.info(f"{datetime.fromtimestamp(time.time())} got response by request {req['json']['msg']}")
+    # r = JSONResponse(status_code=200, content=req['json'])
+    # logger.info(f"{datetime.fromtimestamp(time.time())} got response 100% by request {req['json']['msg']}")
+    # return r
+    logger.info(f'request {req}')
+    for x in asyncio.all_tasks():
+        logger.info(x.get_coro())
     try:
         logger.info(f"{datetime.fromtimestamp(time.time())} session open by request {req['json']['msg']}")
         async with aiohttp.ClientSession() as session:
             logger.info(f"{datetime.fromtimestamp(time.time())} making request by request {req['json']['msg']}")
             async with session.request(**req) as resp:
                 logger.info(f"{datetime.fromtimestamp(time.time())} got response by request {req['json']['msg']}")
-                r = JSONResponse(status_code=resp.status, content=await resp.json(), headers=resp.headers)
+                task = asyncio.create_task(resp.json())
+                r = JSONResponse(status_code=resp.status, content=await task, headers=resp.headers)
                 logger.info(f"{datetime.fromtimestamp(time.time())} got response 100% by request {req['json']['msg']}")
     except Exception as e:
         r = JSONResponse(content={"error": f"{type(e)} {str(e)}"})
@@ -107,16 +121,19 @@ async def make_request(req):
 
 @app.post("/")
 async def hello(request: Request):
+    start = time.time()
     data = await request.json()
     req = data['request']
-    print(data)
-    print(API_registry)
+    logger.info(data)
+    logger.info(API_registry)
     api: API = API_registry[identifier_as_key(data['identifier'])]
     if api.counter == api.rpd:
         return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
     fut = asyncio.Future()
-    await api.queue.put((fut, req))
-    return await fut
+    await api.queue.put((fut,req))
+    res = await fut
+    logger.info(f'SENDING RESPONSE: {time.time()-start}')
+    return res
 
 
 #

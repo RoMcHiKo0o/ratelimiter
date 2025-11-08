@@ -8,16 +8,6 @@
         "interval": 0.5,
         "RPD": -1
       }
-    },
-    {
-      "identifier": {
-        "url": "http://128.0.0.1:8889/test2",
-        "method": "POST"
-      },
-      "rate_limit": {
-        "interval": 0.5,
-        "RPD": 100
-      }
     }
   ]
 }
