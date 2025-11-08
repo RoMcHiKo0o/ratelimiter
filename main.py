@@ -54,7 +54,6 @@ class API:
                 logger.info(F'worker found task {req}')
                 fut: asyncio.Future
                 await asyncio.sleep(self.interval)
-                self.counter = self.counter + 1
                 logger.info(F'worker have slept for {req}')
                 task = asyncio.create_task(make_request(req))
                 logger.info(F'worker have created task {req}')
@@ -129,6 +128,7 @@ async def hello(request: Request):
     api: API = API_registry[identifier_as_key(data['identifier'])]
     if api.counter == api.rpd:
         return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
+    api.counter = api.counter + 1
     fut = asyncio.Future()
     await api.queue.put((fut,req))
     res = await fut
