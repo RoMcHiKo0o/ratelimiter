@@ -18,7 +18,7 @@ async def req(session: aiohttp.ClientSession,i):
             'url': 'http://127.0.0.1:8889/limited2secs'
         },
         'request': {
-            'url': 'http://127.0.0.1:8889/limited2secs/slow',
+            'url': 'http://127.0.0.1:8889/limited2secs',
             'method': 'GET',
             'json': {
                 'msg': f'Hello world {i}'

@@ -34,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 class API:
     def __init__(self, config: dict):
         self.identifier = config["identifier"]
-        self.interval = config["rate_limit"]["interval"] * 1.01
+        self.interval = config["rate_limit"].get("interval",0.001) * 1.01
         self.counter = 0
         self.rpd = config["rate_limit"].get("RPD", -1)
         self.queue = asyncio.Queue()

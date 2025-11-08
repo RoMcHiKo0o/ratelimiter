@@ -6,7 +6,23 @@
       },
       "rate_limit": {
         "interval": 0.5,
-        "RPD": 7
+        "RPD": -1
+      }
+    },
+    {
+      "identifier": {
+        "url": "http://127.0.0.1:8889/unlimited"
+      },
+      "rate_limit": {
+        "RPD": -1
+      }
+    },
+    {
+      "identifier": {
+        "url": "http://127.0.0.1:8889/limitedveryslow"
+      },
+      "rate_limit": {
+        "interval": 2
       }
     }
   ]
