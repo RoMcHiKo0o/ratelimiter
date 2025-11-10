@@ -31,7 +31,7 @@ This layer monitors and controls request flow to external APIs, ensuring that ea
 
    2.  **Configuration File (apis.json) Example:**
 
-       ```json
+       ```jsonc
        {
          "sources": [
            {
