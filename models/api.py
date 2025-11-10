@@ -1,5 +1,4 @@
 import asyncio
-import logging
 from services.requester import make_request
 
 from logger import setup_logger

@@ -1,6 +1,5 @@
 import asyncio
 import json
-import logging
 from datetime import datetime, timedelta
 
 from models.api import API
