@@ -6,7 +6,8 @@
       },
       "rate_limit": {
         "interval": 0.5,
-        "RPD": 10
+        "RPD": 10,
+        "add_random": true
       }
     },
     {
