@@ -1,4 +1,5 @@
 import asyncio
+from random import random
 from services.requester import make_request
 
 from logger import setup_logger
@@ -11,11 +12,16 @@ API_registry: dict[str, "API"] = {}
 class API:
     def __init__(self, config: dict, stop_event: asyncio.Event):
         self.identifier = config["identifier"]
-        self.interval = config.get("rate_limit", {}).get("interval", 0.001) * 1.01
+        self._interval = config.get("rate_limit", {}).get("interval", 0.001) * 1.01
         self.counter = 0
         self.rpd = config.get("rate_limit", {}).get("RPD", -1)
         self.queue = asyncio.Queue()
         self.stop_event = stop_event
+        self.add_random = config.get('add_random', False)
+
+    @property
+    def interval(self):
+        return self._interval + (random() if self.add_random else 0)
 
     async def worker(self):
         logger.info(f"Worker created for {self.identifier}")
