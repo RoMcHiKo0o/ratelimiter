@@ -40,7 +40,8 @@ This layer monitors and controls request flow to external APIs, ensuring that ea
            },
              "rate_limit": {
                "interval": 1,  // in seconds
-               "RPD": 10       // Requests Per Day
+               "RPD": 10,       // Requests Per Day
+               "add_random": true   
              }
            },
            {
@@ -65,11 +66,12 @@ This layer monitors and controls request flow to external APIs, ensuring that ea
 
 The project's behavior can be configured using the `apis.json` file. Here's a breakdown of the available options:
 
-| Key          | Description                                                            | Data Type |
-|--------------|------------------------------------------------------------------------|-----------|
-| `identifier` | A unique identifier for the API source.                                | `string`  |
-| `rate_limit` | An object defining the rate limiting parameters.                       | `object`  |
-| `interval`   | Interval between requests in order to do not reach "Too many reqeusts"   | `number`  |
-| `RPD`        | The maximum number of requests allowed within the specified `interval`. | `integer` |
+| Key          | Description                                                                                                    | Data Type |
+|--------------|----------------------------------------------------------------------------------------------------------------|--------|
+| `identifier` | A unique identifier for the API source.                                                                        | `string` |
+| `rate_limit` | An object defining the rate limiting parameters.                                                               | `object` |
+| `interval`   | Interval between requests in order to do not reach "Too many reqeusts"                                         | `number` |
+| `RPD`        | The maximum number of requests allowed within the specified `interval`.                                        | `integer` |
+| `add_random` | Adds random number from 0 to 1 to interval.<br/>Prevents from ban, when external API conrols time between requests. | `bool` |
 
 
