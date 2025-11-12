@@ -6,8 +6,6 @@ from logger import setup_logger
 
 logger = setup_logger(__name__)
 
-API_registry: dict[str, "API"] = {}
-
 
 class API:
     def __init__(self, config: dict, stop_event: asyncio.Event):

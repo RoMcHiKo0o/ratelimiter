@@ -25,7 +25,9 @@ class APIManager:
     @classmethod
     def start(cls):
         if not cls._apis:
-            raise RuntimeError("APIManager: нет инициализированных API")
+            logger.warning("APIManager: нет инициализированных API")
+            return
+            # raise RuntimeError("APIManager: нет инициализированных API")
 
         asyncio.create_task(cls._midnight_updater())
         for api in cls._apis.values():
@@ -45,8 +47,14 @@ class APIManager:
     @classmethod
     def get(cls, identifier: dict) -> API:
         key = cls._identifier_as_key(identifier)
-        return cls._apis[key]
+        return cls._apis.get(key,None)
 
     @staticmethod
     def _identifier_as_key(data: dict) -> str:
         return json.dumps(data, sort_keys=True, ensure_ascii=False)
+
+    @classmethod
+    def add_api(cls,cfg):
+        api = API(cfg, cls._stop_event)
+        cls._apis |= {cls._identifier_as_key(cfg["identifier"]): api}
+        asyncio.create_task(api.worker())
