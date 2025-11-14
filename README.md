@@ -19,13 +19,14 @@ This layer monitors and controls request flow to external APIs, ensuring that ea
 *   **Dynamic Configuration Loading:** Loads API configurations from a JSON file, allowing for easy updates and additions.
 *   **Centralized Logging:** Implements logging for debugging and monitoring purposes.
 *   **FastAPI Integration:** Uses FastAPI framework to provide endpoints.
+*   **Prioritized Requests:** Allows marking requests with priority levels to ensure faster processing.
 
 ## Usage Examples & API Documentation
 
 1.  **Running the application**
 
     ```bash
-    python main.py
+    uvicorn main:app
     ```
     Or run the `run.bat` batch file to start the application.
 
@@ -74,4 +75,31 @@ The project's behavior can be configured using the `apis.json` file. Here's a br
 | `RPD`        | The maximum number of requests allowed within the specified `interval`.                                        | `integer` |
 | `add_random` | Adds random number from 0 to 1 to interval.<br/>Prevents from ban, when external API conrols time between requests. | `bool` |
 
+## Request Example
+
+```bash
+
+curl -X POST "http://127.0.0.1:8000/" \
+  -H "Content-Type: application/json" \
+  -d "{
+    'identifier': {
+        'url': 'https://www.example.com/endpoint',
+        'method': 'POST'
+    },
+    'request': {
+        'url': 'https://www.example.com/endpoint',
+        'method': 'POST',
+        'headers': {'Content-Type': 'application/json'}
+        'params': {'id': 123},
+        'json': {
+            'msg': 'Hello world'
+        }
+    },
+    'priority': 3    // greater is more prioritized
+} 
+```
+
+## Notes
+
+Anything JSON serializable can be used as an identifier. You can pass not only json with a url, method, etc., but anything.
 

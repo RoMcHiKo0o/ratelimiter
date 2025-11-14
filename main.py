@@ -1,6 +1,7 @@
 import asyncio
-import time
 from contextlib import asynccontextmanager
+from dataclasses import dataclass, field
+from typing import Any
 
 import uvicorn
 from fastapi import FastAPI, Request
@@ -14,6 +15,13 @@ from logger import setup_logger
 
 logger = setup_logger(__name__)
 stop_event = None
+
+
+@dataclass(order=True)
+class Item:
+    priority: int
+    item: Any = field(compare=False)
+
 
 class rateLimit(BaseModel):
     interval: float = 0.001
@@ -55,7 +63,8 @@ async def handle_request(request: Request):
         return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
     api.counter += 1
     fut = asyncio.Future()
-    await api.queue.put((priority, -time.time(), (fut, req)))
+    item = Item(-priority, (fut, req))
+    await api.queue.put(item)
     return await fut
 
 

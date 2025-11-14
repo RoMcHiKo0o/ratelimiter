@@ -33,7 +33,8 @@ class API:
                     self.queue.task_done()
 
             if not self.queue.empty():
-                pr, _, (fut, req) = await self.queue.get()
+                item = await self.queue.get()
+                pr, (fut, req) = item.priority, item.item
                 logger.info(f"Worker {self.identifier} found task with priority {pr}: {req}")
                 task = asyncio.create_task(make_request(req))
                 tasks[fut] = task

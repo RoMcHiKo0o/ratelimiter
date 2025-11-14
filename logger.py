@@ -10,7 +10,6 @@ LOG_FILE = LOG_DIR / "app.log"
 
 
 def setup_logger(name: str = "app", level=logging.INFO) -> logging.Logger:
-    """Создаёт настроенный логгер с ротацией и выводом в консоль."""
     logger = logging.getLogger(name)
     logger.setLevel(level)
 

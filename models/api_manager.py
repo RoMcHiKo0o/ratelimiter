@@ -16,10 +16,10 @@ class APIManager:
     @classmethod
     def init(cls, configs: list[dict], stop_event: asyncio.Event):
         cls._stop_event = stop_event
-        cls._apis = {
-            cls._identifier_as_key(cfg["identifier"]): API(cfg, stop_event)
-            for cfg in configs
-        }
+        for cfg in configs:
+            key = cls._identifier_as_key(cfg)
+            if key is not None:
+                cls._apis[key] = API(cfg, stop_event)
         logger.info(f"Инициализировано {len(cls._apis)} API")
 
     @classmethod
@@ -27,7 +27,6 @@ class APIManager:
         if not cls._apis:
             logger.warning("APIManager: нет инициализированных API")
             return
-            # raise RuntimeError("APIManager: нет инициализированных API")
 
         asyncio.create_task(cls._midnight_updater())
         for api in cls._apis.values():
@@ -47,16 +46,26 @@ class APIManager:
     @classmethod
     def get(cls, identifier: dict) -> API:
         key = cls._identifier_as_key(identifier)
-        return cls._apis.get(key,None)
+        return cls._apis.get(key, None)
 
     @staticmethod
-    def _identifier_as_key(data: dict) -> str:
-        return json.dumps(data, sort_keys=True, ensure_ascii=False)
+    def _identifier_as_key(data: dict) -> str | None:
+        if data is None:
+            logger.info("Identifier can't be None")
+            return None
+        try:
+            return json.dumps(data, sort_keys=True, ensure_ascii=False)
+        except TypeError as e:
+            logger.error(repr(e))
+            logger.info(f"Can't serialize identifier {data}.")
 
     @classmethod
-    def add_api(cls,cfg):
-        if cls._identifier_as_key(cfg["identifier"]) in cls._apis:
+    def add_api(cls, cfg):
+        ide = cls._identifier_as_key(cfg["identifier"])
+        if ide is None:
+            raise Exception("Identifier can't be None")
+        if ide in cls._apis:
             raise Exception('Api with this identifier exists')
         api = API(cfg, cls._stop_event)
-        cls._apis |= {cls._identifier_as_key(cfg["identifier"]): api}
+        cls._apis |= {ide: api}
         asyncio.create_task(api.worker())
