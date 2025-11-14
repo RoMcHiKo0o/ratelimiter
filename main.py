@@ -1,4 +1,5 @@
 import asyncio
+import time
 from contextlib import asynccontextmanager
 
 import uvicorn
@@ -46,22 +47,25 @@ app = FastAPI(lifespan=lifespan)
 async def handle_request(request: Request):
     data = await request.json()
     req = data["request"]
-
+    priority = data.get("priority", 1000000)
     api = APIManager.get(data["identifier"])
     if api is None:
         return JSONResponse(status_code=400, content={"msg": "Нет апи с таким идентификатором"})
     if api.counter == api.rpd:
         return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
-
     api.counter += 1
     fut = asyncio.Future()
-    await api.queue.put((fut, req))
+    await api.queue.put((priority, -time.time(), (fut, req)))
     return await fut
 
 
 @app.post('/add_api')
 async def add_api(cfg: APIModel):
-    APIManager.add_api(cfg.model_dump())
+    try:
+        APIManager.add_api(cfg.model_dump())
+        return JSONResponse(status_code=200, content={"data": "Api has been added"})
+    except Exception as e:
+        return JSONResponse(status_code=400, content={"error": repr(e)})
 
 
 if __name__ == "__main__":

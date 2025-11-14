@@ -55,6 +55,8 @@ class APIManager:
 
     @classmethod
     def add_api(cls,cfg):
+        if cls._identifier_as_key(cfg["identifier"]) in cls._apis:
+            raise Exception('Api with this identifier exists')
         api = API(cfg, cls._stop_event)
         cls._apis |= {cls._identifier_as_key(cfg["identifier"]): api}
         asyncio.create_task(api.worker())

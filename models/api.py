@@ -13,7 +13,7 @@ class API:
         self._interval = config.get("rate_limit", {}).get("interval", 0.001) * 1.01
         self.counter = 0
         self.rpd = config.get("rate_limit", {}).get("RPD", -1)
-        self.queue = asyncio.Queue()
+        self.queue = asyncio.PriorityQueue()
         self.stop_event = stop_event
         self.add_random = config.get('add_random', False)
 
@@ -33,8 +33,8 @@ class API:
                     self.queue.task_done()
 
             if not self.queue.empty():
-                fut, req = await self.queue.get()
-                logger.info(f"Worker found task {req}")
+                pr, _, (fut, req) = await self.queue.get()
+                logger.info(f"Worker {self.identifier} found task with priority {pr}: {req}")
                 task = asyncio.create_task(make_request(req))
                 tasks[fut] = task
                 await asyncio.sleep(self.interval)
