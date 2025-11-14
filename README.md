@@ -2,66 +2,74 @@
 
 ## Project Overview
 
-This repository contains a Python-based rate limiter designed to manage and control the rate at which API requests are made to various sources. It utilizes asynchronous programming with `asyncio` and the `FastAPI` framework for handling API interactions. The project aims to provide a robust and configurable solution for preventing rate limiting issues when interacting with external APIs.
+This repository contains a Python-based rate limiter designed to manage and control the rate at which API requests are
+made to various sources. It utilizes asynchronous programming with `asyncio` and the `FastAPI` framework for handling
+API interactions. The project aims to provide a robust and configurable solution for preventing rate limiting issues
+when interacting with external APIs.
 
 ## Motivation
-In many systems, there can be multiple independent sources that send requests to various external APIs — each of which may have its own rate limits.
-Without proper coordination, it becomes difficult to ensure that these limits are respected, and some parts of the system might accidentally exceed them.
+
+In many systems, there can be multiple independent sources that send requests to various external APIs — each of which
+may have its own rate limits.
+Without proper coordination, it becomes difficult to ensure that these limits are respected, and some parts of the
+system might accidentally exceed them.
 
 The goal of this project is to build a centralized layer that all outgoing requests pass through.
-This layer monitors and controls request flow to external APIs, ensuring that each API’s rate limits are obeyed while allowing multiple internal sources to work safely and efficiently in parallel.
+This layer monitors and controls request flow to external APIs, ensuring that each API’s rate limits are obeyed while
+allowing multiple internal sources to work safely and efficiently in parallel.
 
 ## Key Features & Benefits
 
-*   **Asynchronous Request Handling:** Utilizes `asyncio` for efficient and non-blocking API request management.
-*   **Configurable Rate Limiting:** Defines rate limits (requests per duration) for each API based on configuration files.
-*   **API Management:** Manages multiple API instances with individual rate limiting settings.
-*   **Dynamic Configuration Loading:** Loads API configurations from a JSON file, allowing for easy updates and additions.
-*   **Centralized Logging:** Implements logging for debugging and monitoring purposes.
-*   **FastAPI Integration:** Uses FastAPI framework to provide endpoints.
-*   **Prioritized Requests:** Allows marking requests with priority levels to ensure faster processing.
+* **Asynchronous Request Handling:** Utilizes `asyncio` for efficient and non-blocking API request management.
+* **Configurable Rate Limiting:** Defines rate limits (requests per duration) for each API based on configuration files.
+* **API Management:** Manages multiple API instances with individual rate limiting settings.
+* **Dynamic Configuration Loading:** Loads API configurations from a JSON file, allowing for easy updates and additions.
+* **Centralized Logging:** Implements logging for debugging and monitoring purposes.
+* **FastAPI Integration:** Uses FastAPI framework to provide endpoints.
+* **Prioritized Requests:** Allows marking requests with priority levels to ensure faster processing.
 
 ## Usage Examples & API Documentation
 
-1.  **Running the application**
+1. **Running the application**
 
-    ```bash
-    uvicorn main:app
-    ```
-    Or run the `run.bat` batch file to start the application.
+   ```bash
+   uvicorn main:app
+   ```
+   Or run the `run.bat` batch file to start the application.
 
-   2.  **Configuration File (apis.json) Example:**
+2. **Configuration File (apis.json) Example:**
 
-       ```jsonc
+   ```jsonc
+   {
+     "sources": [
        {
-         "sources": [
-           {
-             "identifier": {
-               "url": "api1"
-           },
-             "rate_limit": {
-               "interval": 1,  // in seconds
-               "RPD": 10,       // Requests Per Day
-               "add_random": true   
-             }
-           },
-           {
-             "identifier": {
-               "url": "api2",
-               "method": "GET"
-           },
-             "rate_limit": {
-               "interval": 0.5,
-               "RPD": -1     // No limit per day, can be not passed with the same behaivour
-             }
-           }
-         ]
+         "identifier": {
+           "url": "api1"
+       },
+         "rate_limit": {
+           "interval": 1,  // in seconds
+           "RPD": 10,       // Requests Per Day
+           "add_random": true   
+         }
+       },
+       {
+         "identifier": {
+           "url": "api2",
+           "method": "GET"
+       },
+         "rate_limit": {
+           "interval": 0.5,
+           "RPD": -1     // No limit per day, can be not passed with the same behaivour
+         }
        }
-       ```
+     ]
+   }
+   ```
 
-3.  **Accessing APIs**:
+3. **Accessing APIs**:
 
-    After the application is running, you can make requests to your FastAPI API endpoints which use `APIManager` to interact with external APIs according to their defined rate limits.
+   After the application is running, you can make requests to your FastAPI API endpoints which use `APIManager` to
+   interact with external APIs according to their defined rate limits.
 
 ## Configuration Options
 
@@ -96,10 +104,11 @@ curl -X POST "http://127.0.0.1:8000/" \
         }
     },
     'priority': 3    // greater is more prioritized
-} 
+  }" 
 ```
 
 ## Notes
 
-Anything JSON serializable can be used as an identifier. You can pass not only json with a url, method, etc., but anything.
+Anything JSON serializable can be used as an identifier. You can pass not only json with a url, method, etc., but
+anything.
 
