@@ -1,4 +1,5 @@
 import asyncio
+import json
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from typing import Any
@@ -42,9 +43,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post("/")
 async def handle_request(request: RequestIdentifierModel):
-    req = request.request
+    req = request.request.model_dump()
     priority = request.priority
-    api = APIManager.get(request.identifier.value)
+    api = APIManager.get(str(request.identifier))
     if api is None:
         return JSONResponse(status_code=400, content={"msg": "Нет апи с таким идентификатором"})
     if api.counter == api.rpd:

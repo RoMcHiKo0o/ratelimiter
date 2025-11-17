@@ -1,5 +1,5 @@
 import json
-from enum import Enum
+from enum import StrEnum
 from typing import Any
 
 from pydantic import BaseModel, field_validator, field_serializer, AnyHttpUrl, model_validator
@@ -15,16 +15,21 @@ class IdentifierModel(BaseModel):
     value: Any
 
     @model_validator(mode="before")
-    @classmethod
     def wrap_any_input(cls, data):
-        return {"value": data}
+        if isinstance(data, dict) and "value" not in data:
+            return {"value": data}
+        return data
 
     @field_validator("value", mode="after")
+    @classmethod
     def after_identifier_validator(cls, v):
         try:
             return json.dumps(v, sort_keys=True, ensure_ascii=False)
         except Exception:
             raise ValueError(f"{v} can't be identifier, it is not JSON serializable")
+
+    def __str__(self):
+        return self.value
 
 
 class APIModel(BaseModel):
@@ -36,7 +41,7 @@ class APIModel(BaseModel):
         return v.value
 
 
-class HTTPMethod(Enum):
+class HTTPMethod(StrEnum):
     GET = "GET"
     HEAD = "HEAD"
     POST = "POST"
@@ -47,13 +52,20 @@ class HTTPMethod(Enum):
     TRACE = "TRACE"
     PATCH = "PATCH"
 
+    def __repr__(self):
+        return self.name
+
 
 class RequestModel(BaseModel):
     url: AnyHttpUrl
     method: HTTPMethod
     headers: dict = {}
     params: dict = {}
-    payload: dict = {}
+    json: dict = {}
+
+    @field_serializer("url")
+    def url_ser(self, v):
+        return str(v)
 
 
 class RequestIdentifierModel(BaseModel):

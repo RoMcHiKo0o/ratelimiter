@@ -20,7 +20,7 @@ class APIManager:
         for cfg in configs:
             v = cfg.get("identifier", None)
             try:
-                cfg["identifier"] = IdentifierModel(value=v).value
+                cfg["identifier"] = str(IdentifierModel(value=v))
                 cls._apis[cfg["identifier"]] = API(cfg, stop_event)
             except ValueError as e:
                 logger.error(repr(e))
