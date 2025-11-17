@@ -109,6 +109,7 @@ curl -X POST "http://127.0.0.1:8000/" \
 
 ## Request Options
 `request`: Just data for HTTP request
+
 `priority`: Default priority is `0`. Greater is more prioritized.
 
 ## Notes
