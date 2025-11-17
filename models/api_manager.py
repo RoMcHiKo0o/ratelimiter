@@ -4,7 +4,7 @@ from datetime import datetime, timedelta
 from models.api import API
 
 from logger import setup_logger
-from schemas import IdentifierModel
+from schemas import APIModel
 
 logger = setup_logger(__name__)
 
@@ -18,10 +18,9 @@ class APIManager:
     def init(cls, configs: list[dict], stop_event: asyncio.Event):
         cls._stop_event = stop_event
         for cfg in configs:
-            v = cfg.get("identifier", None)
             try:
-                cfg["identifier"] = str(IdentifierModel(value=v))
-                cls._apis[cfg["identifier"]] = API(cfg, stop_event)
+                cfg_model = APIModel(**cfg)
+                cls._apis[cfg_model.identifier] = API(cfg_model, stop_event)
             except ValueError as e:
                 logger.error(repr(e))
             except Exception as e:
@@ -55,10 +54,10 @@ class APIManager:
         return cls._apis.get(key, None)
 
     @classmethod
-    def add_api(cls, cfg):
-        ide = cfg["identifier"]
+    def add_api(cls, cfg: APIModel):
+        ide = cfg.identifier
         if ide in cls._apis:
-            raise Exception('Api with this identifier exists')
+            raise Exception(f'Api with this identifier exists: {ide}')
         api = API(cfg, cls._stop_event)
         cls._apis |= {ide: api}
         asyncio.create_task(api.worker())

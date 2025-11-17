@@ -1,5 +1,7 @@
 import asyncio
 from random import random
+
+from schemas import APIModel
 from services.requester import make_request
 
 from logger import setup_logger
@@ -8,14 +10,14 @@ logger = setup_logger(__name__)
 
 
 class API:
-    def __init__(self, config: dict, stop_event: asyncio.Event):
-        self.identifier = config["identifier"]
-        self._interval = config.get("rate_limit", {}).get("interval", 0.001) * 1.01
+    def __init__(self, config: APIModel, stop_event: asyncio.Event):
+        self.identifier = config.identifier
+        self._interval = config.rate_limit.interval * 1.01
         self.counter = 0
-        self.rpd = config.get("rate_limit", {}).get("RPD", -1)
+        self.rpd = config.rate_limit.RPD
         self.queue = asyncio.PriorityQueue()
         self.stop_event = stop_event
-        self.add_random = config.get('add_random', False)
+        self.add_random = config.rate_limit.add_random
 
     @property
     def interval(self):

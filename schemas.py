@@ -1,8 +1,10 @@
 import json
-from enum import StrEnum
-from typing import Any
+from typing import Any, Literal, Annotated
 
-from pydantic import BaseModel, field_validator, field_serializer, AnyHttpUrl, model_validator
+from pydantic import BaseModel, AnyHttpUrl, Field, PlainSerializer, AfterValidator
+
+HTTP_METHODS_LITERAL = Literal["GET", "HEAD", "POST", "PUT", "DELETE", "CONNECT", "OPTIONS", "TRACE", "PATCH"]
+HTTP_METHODS_LIST = list(HTTP_METHODS_LITERAL.__args__)
 
 
 class RateLimitModel(BaseModel):
@@ -11,64 +13,34 @@ class RateLimitModel(BaseModel):
     add_random: bool = False
 
 
-class IdentifierModel(BaseModel):
-    value: Any
+def identifier_validator(v):
+    try:
+        return json.dumps(v, sort_keys=True, ensure_ascii=False)
+    except Exception:
+        raise ValueError(f"{v} can't be identifier, it is not JSON serializable")
 
-    @model_validator(mode="before")
-    def wrap_any_input(cls, data):
-        if isinstance(data, dict) and "value" not in data:
-            return {"value": data}
-        return data
 
-    @field_validator("value", mode="after")
-    @classmethod
-    def after_identifier_validator(cls, v):
-        try:
-            return json.dumps(v, sort_keys=True, ensure_ascii=False)
-        except Exception:
-            raise ValueError(f"{v} can't be identifier, it is not JSON serializable")
-
-    def __str__(self):
-        return self.value
+IdentifierType = Annotated[Any, AfterValidator(identifier_validator)]
 
 
 class APIModel(BaseModel):
-    identifier: IdentifierModel
+    identifier: IdentifierType
     rate_limit: RateLimitModel
 
-    @field_serializer('identifier')
-    def shortened_identifier(self, v):
-        return v.value
 
-
-class HTTPMethod(StrEnum):
-    GET = "GET"
-    HEAD = "HEAD"
-    POST = "POST"
-    PUT = "PUT"
-    DELETE = "DELETE"
-    CONNECT = "CONNECT"
-    OPTIONS = "OPTIONS"
-    TRACE = "TRACE"
-    PATCH = "PATCH"
-
-    def __repr__(self):
-        return self.name
+def url_serializer(val: AnyHttpUrl):
+    return str(val)
 
 
 class RequestModel(BaseModel):
-    url: AnyHttpUrl
-    method: HTTPMethod
+    url: Annotated[AnyHttpUrl, PlainSerializer(url_serializer)]
+    method: HTTP_METHODS_LITERAL
     headers: dict = {}
     params: dict = {}
-    json: dict = {}
-
-    @field_serializer("url")
-    def url_ser(self, v):
-        return str(v)
+    json_data: dict = Field(default={}, alias="json")
 
 
 class RequestIdentifierModel(BaseModel):
-    identifier: IdentifierModel
+    identifier: IdentifierType
     request: RequestModel
     priority: int = 0
