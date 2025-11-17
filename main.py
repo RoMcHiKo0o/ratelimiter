@@ -4,14 +4,14 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, Request
+from fastapi import FastAPI
 from fastapi.responses import JSONResponse
-from pydantic import BaseModel
 
 from config_loader import load_configs
 from models.api_manager import APIManager
 
 from logger import setup_logger
+from schemas import RequestIdentifierModel, APIModel
 
 logger = setup_logger(__name__)
 stop_event = None
@@ -21,17 +21,6 @@ stop_event = None
 class Item:
     priority: int
     item: Any = field(compare=False)
-
-
-class rateLimit(BaseModel):
-    interval: float = 0.001
-    RPD: int = -1
-    add_random: bool = False
-
-
-class APIModel(BaseModel):
-    identifier: dict | str
-    rate_limit: rateLimit
 
 
 @asynccontextmanager
@@ -52,11 +41,10 @@ app = FastAPI(lifespan=lifespan)
 
 
 @app.post("/")
-async def handle_request(request: Request):
-    data = await request.json()
-    req = data["request"]
-    priority = data.get("priority", 1000000)
-    api = APIManager.get(data["identifier"])
+async def handle_request(request: RequestIdentifierModel):
+    req = request.request
+    priority = request.priority
+    api = APIManager.get(request.identifier.value)
     if api is None:
         return JSONResponse(status_code=400, content={"msg": "Нет апи с таким идентификатором"})
     if api.counter == api.rpd:
@@ -75,6 +63,11 @@ async def add_api(cfg: APIModel):
         return JSONResponse(status_code=200, content={"data": "Api has been added"})
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": repr(e)})
+
+
+@app.get('/get_apis')
+async def get_apis():
+    return JSONResponse(status_code=200, content=list(APIManager.get_all_apis().keys()))
 
 
 if __name__ == "__main__":

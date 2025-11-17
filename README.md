@@ -103,12 +103,16 @@ curl -X POST "http://127.0.0.1:8000/" \
             'msg': 'Hello world'
         }
     },
-    'priority': 3    // greater is more prioritized
+    'priority': 3
   }" 
 ```
+
+## Request Options
+`request`: Just data for HTTP request
+`priority`: Default priority is `0`. Greater is more prioritized.
 
 ## Notes
 
 Anything JSON serializable can be used as an identifier. You can pass not only json with a url, method, etc., but
-anything.
+anything. Better not pass None-like objects as identifier.
 

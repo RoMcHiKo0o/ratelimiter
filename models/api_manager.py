@@ -1,12 +1,13 @@
 import asyncio
-import json
 from datetime import datetime, timedelta
 
 from models.api import API
 
 from logger import setup_logger
+from schemas import IdentifierModel
 
 logger = setup_logger(__name__)
+
 
 class APIManager:
     """Менеджер всех API-инстансов и фоновых задач."""
@@ -17,15 +18,21 @@ class APIManager:
     def init(cls, configs: list[dict], stop_event: asyncio.Event):
         cls._stop_event = stop_event
         for cfg in configs:
-            key = cls._identifier_as_key(cfg)
-            if key is not None:
-                cls._apis[key] = API(cfg, stop_event)
+            v = cfg.get("identifier", None)
+            try:
+                cfg["identifier"] = IdentifierModel(value=v).value
+                cls._apis[cfg["identifier"]] = API(cfg, stop_event)
+            except ValueError as e:
+                logger.error(repr(e))
+            except Exception as e:
+                logger.error(f"Unexpected error:  {repr(e)}")
+
         logger.info(f"Инициализировано {len(cls._apis)} API")
 
     @classmethod
     def start(cls):
         if not cls._apis:
-            logger.warning("APIManager: нет инициализированных API")
+            logger.info("APIManager: нет инициализированных API")
             return
 
         asyncio.create_task(cls._midnight_updater())
@@ -44,28 +51,18 @@ class APIManager:
             await asyncio.sleep(1)
 
     @classmethod
-    def get(cls, identifier: dict) -> API:
-        key = cls._identifier_as_key(identifier)
+    def get(cls, key: str) -> API | None:
         return cls._apis.get(key, None)
-
-    @staticmethod
-    def _identifier_as_key(data: dict) -> str | None:
-        if data is None:
-            logger.info("Identifier can't be None")
-            return None
-        try:
-            return json.dumps(data, sort_keys=True, ensure_ascii=False)
-        except TypeError as e:
-            logger.error(repr(e))
-            logger.info(f"Can't serialize identifier {data}.")
 
     @classmethod
     def add_api(cls, cfg):
-        ide = cls._identifier_as_key(cfg["identifier"])
-        if ide is None:
-            raise Exception("Identifier can't be None")
+        ide = cfg["identifier"]
         if ide in cls._apis:
             raise Exception('Api with this identifier exists')
         api = API(cfg, cls._stop_event)
         cls._apis |= {ide: api}
         asyncio.create_task(api.worker())
+
+    @classmethod
+    def get_all_apis(cls):
+        return cls._apis
