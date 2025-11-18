@@ -86,16 +86,16 @@ The project's behavior can be configured using the `apis.json` file. Here's a br
 
 ### Identifier Options
 
-| Key          | Description                                                      | Data Type |
-|--------------|------------------------------------------------------------------|-----------|
-| `url`        | Required. URL.                                                   | `string`  |
-| `method`     | Optional. HTTP method. Default `"ANY"`                           | `string`  |
-| `extra`      | Optional. Can be specified for special identifier cases.<br/>Default`""` | `string`  |
+| Key          | Description                                                               | Data Type |
+|--------------|---------------------------------------------------------------------------|-----------|
+| `url`        | Required. URL.                                                            | `string`  |
+| `method`     | Optional. HTTP method. Default=`"ANY"`                                    | `string`  |
+| `extra`      | Optional. Can be specified for special identifier cases.<br/>Default=`""` | `string`  |
 
 ### Priority Options
 
 Priority is passed in headers by `x-priority` key. Priority type is `str` (must represent an `int` value).
-The value is casted to an integer using `int(value)`.
+The value is casted to an integer using `int(value)`. Default priority is `0`.
 
 ## Request Example
 
