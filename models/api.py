@@ -37,7 +37,8 @@ class API:
             if not self.queue.empty():
                 item = await self.queue.get()
                 pr, (fut, req) = item.priority, item.item
-                logger.info(f"Worker {self.identifier} found task with priority {pr}: {req}")
+                logger.info(
+                    f"Worker {self.identifier} found task with priority {pr}: {req.get('method')}, {req.get('url')}")
                 task = asyncio.create_task(make_request(req))
                 tasks[fut] = task
                 await asyncio.sleep(self.interval)

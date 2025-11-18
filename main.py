@@ -1,14 +1,14 @@
 import asyncio
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
-from typing import Any, Annotated
+from typing import Any
 
 import uvicorn
-from fastapi import FastAPI, Request, Query
+from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from config_loader import load_configs
-from models.api_manager import APIManager
+from models.api_manager import APIManager, get_identifier, is_ide_conflicted
 
 from logger import setup_logger
 from schemas import RequestIdentifierModel, HTTP_METHODS_LIST, APIModel
@@ -16,9 +16,6 @@ from schemas import RequestIdentifierModel, HTTP_METHODS_LIST, APIModel
 logger = setup_logger(__name__)
 stop_event = None
 
-
-def get_identifier(url, method):
-    ...
 
 
 @dataclass(order=True)
@@ -46,6 +43,9 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post('/add_api')
 async def add_api(cfg: APIModel):
+    res = is_ide_conflicted(cfg.identifier)
+    if res:
+        return JSONResponse(status_code=400, content={"error": f"Identifiers with overlapping areas of influence were found."})
     try:
         APIManager.add_api(cfg)
         return JSONResponse(status_code=200, content={"data": "Api has been added"})
@@ -60,9 +60,10 @@ async def get_apis():
 
 @app.api_route("/{url:path}", methods=HTTP_METHODS_LIST)
 async def handle_request(request: Request, url: str):
-    # ide = get_identifier(url, request.method)
-    ide = (await request.json())['identifier']
     headers = dict(request.headers)
+    ide_extra = headers.pop('x-identifier-extra', "")
+    ide = get_identifier(url, request.method, ide_extra)
+
     req_data = {
         "identifier": ide,
         "request": {
@@ -73,7 +74,8 @@ async def handle_request(request: Request, url: str):
             "json": await request.json()
         }
     }
-    priority = headers.pop('x-priority', None) or 0
+    priority = headers.pop('x-priority', 0)
+
     try:
         priority = int(priority)
         req_data['priority'] = priority
@@ -81,7 +83,6 @@ async def handle_request(request: Request, url: str):
         logger.warning(f'Priority have to be int-like string, got {priority=}')
 
     req = RequestIdentifierModel(**req_data)
-    return req.model_dump()
     api = APIManager.get(req.identifier)
     if api is None:
         return JSONResponse(status_code=400, content={"msg": "Нет апи с таким идентификатором"})
@@ -89,7 +90,7 @@ async def handle_request(request: Request, url: str):
         return JSONResponse(status_code=429, content={"msg": "Достигнут лимит запросов в сутки"})
     api.counter += 1
     fut = asyncio.Future()
-    item = Item(-priority, (fut, req))
+    item = Item(-priority, (fut, req.request.model_dump()))
     await api.queue.put(item)
     return await fut
 
