@@ -59,22 +59,27 @@ async def get_apis():
 
 
 @app.api_route("/{url:path}", methods=HTTP_METHODS_LIST)
-async def handle_request(request: Request, url: str, priority: Annotated[int, Query()] = 0):
+async def handle_request(request: Request, url: str):
     # ide = get_identifier(url, request.method)
     ide = (await request.json())['identifier']
-    params = dict(request.query_params)
-    params.pop("priority", None)
+    headers = dict(request.headers)
     req_data = {
         "identifier": ide,
         "request": {
             "url": url,
             "method": request.method,
-            "headers": request.headers,
+            "headers": headers,
             "params": request.query_params,
             "json": await request.json()
-        },
-        "priority": priority
+        }
     }
+    priority = headers.pop('x-priority', None) or 0
+    try:
+        priority = int(priority)
+        req_data['priority'] = priority
+    except:
+        logger.warning(f'Priority have to be int-like string, got {priority=}')
+
     req = RequestIdentifierModel(**req_data)
     return req.model_dump()
     api = APIManager.get(req.identifier)
