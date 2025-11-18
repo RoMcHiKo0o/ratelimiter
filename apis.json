@@ -6,7 +6,7 @@
       },
       "rate_limit": {
         "interval": 0.5,
-        "add_random": true
+        "add_random": false
       }
     },
     {

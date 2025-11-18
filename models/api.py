@@ -12,7 +12,7 @@ logger = setup_logger(__name__)
 class API:
     def __init__(self, config: APIModel, stop_event: asyncio.Event):
         self.identifier = config.identifier
-        self._interval = config.rate_limit.interval * 1.01
+        self._interval = config.rate_limit.interval * 1.1
         self.counter = 0
         self.rpd = config.rate_limit.RPD
         self.queue = asyncio.PriorityQueue()

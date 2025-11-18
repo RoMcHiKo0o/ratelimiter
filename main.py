@@ -63,7 +63,11 @@ async def handle_request(request: Request, url: str):
     headers = dict(request.headers)
     ide_extra = headers.pop('x-identifier-extra', "")
     ide = get_identifier(url, request.method, ide_extra)
-
+    json_data = {}
+    try:
+        json_data = await request.json()
+    except:
+        pass
     req_data = {
         "identifier": ide,
         "request": {
@@ -71,7 +75,7 @@ async def handle_request(request: Request, url: str):
             "method": request.method,
             "headers": headers,
             "params": request.query_params,
-            "json": await request.json()
+            "json": json_data
         }
     }
     priority = headers.pop('x-priority', 0)

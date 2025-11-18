@@ -1,6 +1,4 @@
 import aiohttp
-import time
-from datetime import datetime
 from fastapi.responses import JSONResponse
 
 from logger import setup_logger

@@ -6,16 +6,18 @@ import aiohttp
 from aiohttp import ClientTimeout
 
 
+RATELIMITER_URL = "http://127.0.0.1:8000/"
+RATELIMITER_URL = ""
 async def req(session: aiohttp.ClientSession, i):
     if random() > 0.5:
-        async with session.get('http://127.0.0.1:8000/http://127.0.0.1:8889/limited2secs',
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/limited2secs',
                                 headers={"priority": str(1000 * random())}, json={
                     'msg': f'Hello world {i}'
                 }) as resp:
             print(resp.status)
             print(await resp.json())
     else:
-        async with session.get('http://127.0.0.1:8000/http://127.0.0.1:8889/limited2secs', json={
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/limited2secs', json={
             'msg': f'Hello world {i}'
         }) as resp:
             print(resp.status)
@@ -24,14 +26,14 @@ async def req(session: aiohttp.ClientSession, i):
 
 async def req2(session: aiohttp.ClientSession, i):
     if random() > 0.5:
-        async with session.get('http://127.0.0.1:8000/http://127.0.0.1:8889/unlimited',
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/unlimited',
                                 headers={"priority": str(1000 * random())}, json={
                     'msg': f'Hello unlimited world {i}'
                 }) as resp:
             print(resp.status)
             print(await resp.json())
     else:
-        async with session.get('http://127.0.0.1:8000/http://127.0.0.1:8889/unlimited', json={
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/unlimited', json={
             'msg': f'Hello unlimited world {i}'
         }) as resp:
             print(resp.status)
@@ -40,14 +42,14 @@ async def req2(session: aiohttp.ClientSession, i):
 
 async def req3(session: aiohttp.ClientSession, i):
     if random() > 0.5:
-        async with session.post('http://127.0.0.1:8000/http://127.0.0.1:8889/limited2secs',
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/limited2secs',
                                 headers={"priority": str(1000 * random())}, json={
                     'msg': f'Hello world {i}'
                 }) as resp:
             print(resp.status)
             print(await resp.json())
     else:
-        async with session.post('http://127.0.0.1:8000/http://127.0.0.1:8889/limited2secs', json={
+        async with session.get(f'{RATELIMITER_URL}http://127.0.0.1:8889/limited2secs', json={
             'msg': f'Hello world {i}'
         }) as resp:
             print(resp.status)
@@ -56,13 +58,13 @@ async def req3(session: aiohttp.ClientSession, i):
 
 async def req4(session: aiohttp.ClientSession, i):
     if random() > 0.5:
-        async with session.post('http://127.0.0.1:8000/http://127.0.0.1:8889/limitedveryslow', headers={"priority": str(1000*random())}, json={
+        async with session.post(f'{RATELIMITER_URL}http://127.0.0.1:8889/limitedveryslow', headers={"priority": str(1000*random())}, json={
             'msg': f'Hello very slow world {i}'
         }) as resp:
             print(resp.status)
             print(await resp.json())
     else:
-        async with session.post('http://127.0.0.1:8000/http://127.0.0.1:8889/limitedveryslow', json={
+        async with session.post(f'{RATELIMITER_URL}http://127.0.0.1:8889/limitedveryslow', json={
             'msg': f'Hello very slow world {i}'
         }) as resp:
             print(resp.status)
