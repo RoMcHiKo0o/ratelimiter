@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from config_loader import load_configs
-from models.api_manager import APIManager, get_identifier, is_ide_conflicted
+from models.api_manager import api_manager, get_identifier, is_ide_conflicted
 
 from logger import setup_logger
 from schemas import RequestIdentifierModel, HTTP_METHODS_LIST, APIModel
@@ -47,7 +47,7 @@ async def add_api(cfg: APIModel):
     if res:
         return JSONResponse(status_code=400, content={"error": f"Identifiers with overlapping areas of influence were found."})
     try:
-        APIManager.add_api(cfg)
+        api_manager.add_api(cfg)
         return JSONResponse(status_code=200, content={"data": "Api has been added"})
     except Exception as e:
         return JSONResponse(status_code=400, content={"error": repr(e)})
@@ -55,7 +55,7 @@ async def add_api(cfg: APIModel):
 
 @app.get('/get_apis')
 async def get_apis():
-    return JSONResponse(status_code=200, content=list(APIManager.get_all_apis().keys()))
+    return JSONResponse(status_code=200, content=list(api_manager.get_all_apis().keys()))
 
 
 @app.api_route("/{url:path}", methods=HTTP_METHODS_LIST)
@@ -87,7 +87,7 @@ async def handle_request(request: Request, url: str):
         logger.warning(f'Priority have to be int-like string, got {priority=}')
 
     req = RequestIdentifierModel(**req_data)
-    api = APIManager.get(req.identifier)
+    api = api_manager.get(req.identifier)
     if api is None:
         return JSONResponse(status_code=400, content={"msg": "Нет апи с таким идентификатором"})
     if api.counter == api.rpd:
