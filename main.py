@@ -8,13 +8,14 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from config_loader import load_configs
-from models.api_manager import api_manager, get_identifier, is_ide_conflicted
+from models.api_manager import get_identifier, is_ide_conflicted
 
 from logger import setup_logger
 from schemas import RequestIdentifierModel, HTTP_METHODS_LIST, APIModel
 
 logger = setup_logger(__name__)
 stop_event = None
+api_manager = None
 
 
 
@@ -27,9 +28,10 @@ class Item:
 @asynccontextmanager
 async def lifespan(app):
     global stop_event
+    global api_manager
     stop_event = asyncio.Event()
 
-    load_configs(stop_event)
+    api_manager = load_configs(stop_event)
     yield
 
     logger.info("Setting stop event")
@@ -43,7 +45,7 @@ app = FastAPI(lifespan=lifespan)
 
 @app.post('/add_api')
 async def add_api(cfg: APIModel):
-    res = is_ide_conflicted(cfg.identifier)
+    res = is_ide_conflicted(cfg.identifier, api_manager)
     if res:
         return JSONResponse(status_code=400, content={"error": f"Identifiers with overlapping areas of influence were found."})
     try:
@@ -62,7 +64,7 @@ async def get_apis():
 async def handle_request(request: Request, url: str):
     headers = dict(request.headers)
     ide_extra = headers.pop('x-identifier-extra', "")
-    ide = get_identifier(url, request.method, ide_extra)
+    ide = get_identifier(url, request.method, ide_extra, api_manager)
     json_data = {}
     try:
         json_data = await request.json()

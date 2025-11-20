@@ -13,12 +13,10 @@ logger = setup_logger(__name__)
 
 class APIManager:
     """Менеджер всех API-инстансов и фоновых задач."""
+    _apis: dict[str, API] = {}
+    _stop_event: asyncio.Event | None = None
 
-    def __init__(self):
-        self._apis: dict[str, API] = {}
-        self._stop_event: asyncio.Event | None = None
-
-    def init(self, configs: list[dict], stop_event: asyncio.Event):
+    def __init__(self, configs: list[dict], stop_event: asyncio.Event):
         self._stop_event = stop_event
         self._apis.clear()
         for cfg in configs:
@@ -74,9 +72,6 @@ class APIManager:
         return self._apis
 
 
-api_manager = APIManager()
-
-
 def get_sub_urls(url: str):
     parsed_url = urlparse(url)
     l = urlparse(url).path.split('/')
@@ -85,15 +80,14 @@ def get_sub_urls(url: str):
 
 
 def get_identifier(
-    url: str,
-    method: str,
-    extra: str,
-    first: bool = True,
-    manager: APIManager | None = None,
+        url: str,
+        method: str,
+        extra: str,
+        manager: APIManager,
+        first: bool = True
 ) -> dict[str, str] | None:
-    selected_manager = manager or api_manager
     res = []
-    for key in selected_manager.get_all_apis().keys():
+    for key in manager.get_all_apis().keys():
         ide = json.loads(key)
         if ide.get("extra", "") != extra:
             continue
@@ -109,10 +103,9 @@ def get_identifier(
     return None if first else res
 
 
-def is_ide_conflicted(ide_str: str, manager: APIManager | None = None):
-    selected_manager = manager or api_manager
+def is_ide_conflicted(ide_str: str, manager: APIManager):
     ide = json.loads(ide_str)
-    same_ides = get_identifier(ide["url"], ide["method"], ide["extra"], first=False, manager=selected_manager)
+    same_ides = get_identifier(ide["url"], ide["method"], ide["extra"], manager=manager, first=False)
     if len(same_ides):
         logger.error(f"Identifier: {ide}. Overlapping identifiers: {same_ides}")
         return same_ides
