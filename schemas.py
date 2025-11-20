@@ -15,9 +15,9 @@ class RateLimitModel(BaseModel):
 
 def identifier_validator(v):
     if not isinstance(v,dict):
-        raise TypeError('Identifier must be a dict')
+        raise ValueError('Identifier must be a dict')
     if "url" not in v:
-        raise KeyError(f"{v} must have required 'url' key")
+        raise ValueError(f"{v} must have required 'url' key")
     AnyHttpUrl(v["url"])
     v['method'] = v.get("method", "ANY")
     if v.get("method") not in HTTP_METHODS_LIST + ["ANY"]:
@@ -25,7 +25,7 @@ def identifier_validator(v):
     v['extra'] = v.get("extra", "")
     if {"extra", "method", "url"} != set(sorted(v.keys())):
         print(v)
-        raise KeyError(f"Identifier can have only ('extra', 'method', 'url') keys")
+        raise ValueError(f"Identifier can have only ('extra', 'method', 'url') keys")
     try:
         return json.dumps(v, sort_keys=True, ensure_ascii=False)
     except Exception:
