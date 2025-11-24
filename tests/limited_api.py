@@ -31,7 +31,7 @@ async def hello_unlimited(request: Request):
 
 
 @app.post("/limitedveryslow")
-@limiter.limit("5/second")
+@limiter.limit("6/minute")
 async def hello_limited(request: Request):
     await asyncio.sleep(2.5)
     return JSONResponse(status_code=200, content=await request.json())

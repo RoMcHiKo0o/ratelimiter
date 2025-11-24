@@ -22,7 +22,7 @@
         "url": "http://127.0.0.1:8889/limitedveryslow"
       },
       "rate_limit": {
-        "interval": 2
+        "interval": 10
       }
     }
   ]

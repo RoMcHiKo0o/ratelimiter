@@ -1,9 +1,17 @@
+"""
+Менеджер API-инстансов и фоновых задач.
+
+Отвечает за:
+- Инициализацию и управление жизненным циклом API-инстансов
+- Запуск фоновых задач (workers, daily counter reset)
+- Предоставление доступа к API по идентификаторам
+"""
 import asyncio
-import json
 from datetime import datetime, timedelta
-from urllib.parse import urlparse, urljoin
+from typing import Optional
 
 from models.api import API
+from services.identifier_matcher import IdentifierMatcher
 
 from logger import setup_logger
 from schemas import APIModel
@@ -11,94 +19,144 @@ from schemas import APIModel
 logger = setup_logger(__name__)
 
 
-def get_sub_urls(url: str):
-    parsed_url = urlparse(url)
-    l = urlparse(url).path.split('/')
-    base_url = f"{parsed_url.scheme}://{parsed_url.netloc}"
-    return [urljoin(base_url, '/'.join(l[:i + 1])) for i in range(len(l))]
-
-
-def get_identifier(url: str, method: str, extra: str, first: bool = True) -> dict[str, str] | None:
-    res = []
-    for key in APIManager.get_all_apis().keys():
-        ide = json.loads(key)
-        if ide.get("extra", "") != extra:
-            continue
-        ide_method = ide.get("method")
-        if not (method == ide_method or ide_method == "ANY" or (method == "ANY" and not first)):
-            continue
-        for sub_url in get_sub_urls(url)[::-1]:
-            if sub_url == ide.get("url"):
-                v = {"url": sub_url, "method": ide_method, "extra": extra}
-                if first:
-                    return v
-                res.append(v)
-    return None if first else res
-
-
-def is_ide_conflicted(ide_str: str):
-    ide = json.loads(ide_str)
-    same_ides = get_identifier(ide["url"], ide["method"], ide["extra"], first=False)
-    if len(same_ides):
-        logger.error(f"Identifier: {ide}. Overlapping identifiers: {same_ides}")
-        return same_ides
-    return False
-
-
 class APIManager:
-    """Менеджер всех API-инстансов и фоновых задач."""
-    _apis: dict[str, API] = {}
-    _stop_event: asyncio.Event | None = None
+    """
+    Менеджер всех API-инстансов и фоновых задач.
+    
+    Управляет жизненным циклом API-инстансов, запускает workers для обработки запросов
+    и выполняет периодические задачи (например, сброс счётчиков в полночь).
+    """
 
-    @classmethod
-    def init(cls, configs: list[dict], stop_event: asyncio.Event):
-        cls._stop_event = stop_event
+    def __init__(self, configs: list[dict], stop_event: asyncio.Event):
+        """
+        Инициализация менеджера API.
+        
+        Args:
+            configs: Список конфигураций API
+            stop_event: Событие для остановки всех фоновых задач
+        """
+        self._apis: dict[str, API] = {}
+        self._stop_event = stop_event
+        self._identifier_matcher = IdentifierMatcher(self)
+        
+        self._initialize_apis(configs)
+        logger.info(f"Инициализировано {len(self._apis)} API")
+
+    def _initialize_apis(self, configs: list[dict]) -> None:
+        """
+        Инициализирует API из списка конфигураций.
+        
+        Пропускает конфигурации с ошибками валидации или конфликтующими идентификаторами.
+        
+        Args:
+            configs: Список конфигураций API
+        """
         for cfg in configs:
             try:
                 cfg_model = APIModel(**cfg)
-                if not is_ide_conflicted(cfg_model.identifier):
-                    cls._apis[cfg_model.identifier] = API(cfg_model, stop_event)
+                
+                if self._identifier_matcher.has_conflict(cfg_model.identifier):
+                    continue
+                
+                self._apis[cfg_model.identifier] = API(cfg_model, self._stop_event)
+                
             except (ValueError, KeyError, TypeError) as e:
-                logger.error(repr(e))
+                logger.error(f"Ошибка валидации конфигурации API: {repr(e)}")
             except Exception as e:
-                logger.error(f"Unexpected error:  {repr(e)}")
+                logger.error(f"Неожиданная ошибка при инициализации API: {repr(e)}")
 
-        logger.info(f"Инициализировано {len(cls._apis)} API")
-
-    @classmethod
-    def start(cls):
-        if not cls._apis:
+    def start(self) -> None:
+        """
+        Запускает все фоновые задачи:
+        - Задачи для сброса счётчиков в полночь
+        - Workers для каждого API-инстанса
+        """
+        if not self._apis:
             logger.info("APIManager: нет инициализированных API")
             return
 
-        asyncio.create_task(cls._midnight_updater())
-        for api in cls._apis.values():
+        asyncio.create_task(self._midnight_updater())
+        for api in self._apis.values():
             asyncio.create_task(api.worker())
 
-    @classmethod
-    async def _midnight_updater(cls):
-        while not cls._stop_event.is_set():
+    async def _midnight_updater(self) -> None:
+        """
+        Фоновая задача, сбрасывающая счётчики запросов всех API в полночь.
+        
+        Работает в бесконечном цикле до установки stop_event.
+        """
+        if self._stop_event is None:
+            logger.warning("APIManager: stop_event не установлен, обновление счётчиков отменено")
+            return
+
+        while not self._stop_event.is_set():
             now = datetime.now()
+            # Вычисляем время следующей полночи
             target = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
-            await asyncio.sleep((target - now).total_seconds())
-            for api in cls._apis.values():
-                api.counter = 0
+            sleep_seconds = (target - now).total_seconds()
+            
+            await asyncio.sleep(sleep_seconds)
+            
+            # Сбрасываем счётчики всех API
+            self._reset_all_counters()
+            
             logger.info("✅ Обновил счётчики запросов в день")
-            await asyncio.sleep(1)
+            await asyncio.sleep(1)  # Небольшая задержка перед следующим циклом
 
-    @classmethod
-    def get(cls, key: str) -> API | None:
-        return cls._apis.get(key, None)
+    def _reset_all_counters(self) -> None:
+        """Сбрасывает счётчики запросов для всех API-инстансов."""
+        for api in self._apis.values():
+            api.counter = 0
 
-    @classmethod
-    def add_api(cls, cfg: APIModel):
-        ide = cfg.identifier
-        if ide in cls._apis:
-            raise Exception(f'Api with this identifier exists: {ide}')
-        api = API(cfg, cls._stop_event)
-        cls._apis |= {ide: api}
+    def get(self, identifier_key: str) -> Optional[API]:
+        """
+        Получает API-инстанс по ключу идентификатора.
+        
+        Args:
+            identifier_key: JSON-строка идентификатора
+            
+        Returns:
+            API-инстанс или None, если не найден
+        """
+        return self._apis.get(identifier_key, None)
+
+    def get_all_apis(self) -> dict[str, API]:
+        """
+        Возвращает словарь всех зарегистрированных API-инстансов.
+        
+        Returns:
+            Словарь {identifier: API instance}
+        """
+        return self._apis
+
+    def add_api(self, cfg: APIModel) -> None:
+        """
+        Добавляет новый API-инстанс в менеджер.
+        
+        Args:
+            cfg: Конфигурация API для добавления
+            
+        Raises:
+            RuntimeError: Если менеджер не инициализирован
+            Exception: Если API с таким идентификатором уже существует
+        """
+        if self._stop_event is None:
+            raise RuntimeError("APIManager не инициализирован: stop_event не установлен")
+
+        identifier = cfg.identifier
+        
+        if identifier in self._apis:
+            raise Exception(f'API с таким идентификатором уже существует: {identifier}')
+        
+        api = API(cfg, self._stop_event)
+        self._apis[identifier] = api
         asyncio.create_task(api.worker())
 
-    @classmethod
-    def get_all_apis(cls):
-        return cls._apis
+    def get_identifier_matcher(self) -> IdentifierMatcher:
+        """
+        Возвращает экземпляр IdentifierMatcher для этого менеджера.
+        
+        Returns:
+            IdentifierMatcher для работы с идентификаторами
+        """
+        return self._identifier_matcher
