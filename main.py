@@ -21,20 +21,17 @@ async def lifespan(app: FastAPI):
     
     Инициализирует API менеджер при старте и корректно останавливает все задачи при завершении.
     """
-    stop_event = asyncio.Event()
-    
     # Загружаем конфигурации и создаём API менеджер
-    api_manager = load_configs(stop_event)
+    api_manager = load_configs()
     
     # Сохраняем в app.state для доступа из роутеров
-    app.state.api_manager = api_manager
-    app.state.stop_event = stop_event
+    app.state.api_manager = api_manager # Для обратной совместимости, если нужно
     
     yield
     
     # Останавливаем все фоновые задачи
-    logger.info("Setting stop event")
-    stop_event.set()
+    logger.info("Stopping all workers")
+    api_manager.stop_all()  # Останавливает все: воркеры и midnight updater
     await asyncio.sleep(0)
     logger.info("DONE")
 

@@ -27,16 +27,15 @@ class APIManager:
     и выполняет периодические задачи (например, сброс счётчиков в полночь).
     """
 
-    def __init__(self, configs: list[dict], stop_event: asyncio.Event):
+    def __init__(self, configs: list[dict]):
         """
         Инициализация менеджера API.
         
         Args:
             configs: Список конфигураций API
-            stop_event: Событие для остановки всех фоновых задач
         """
         self._apis: dict[str, API] = {}
-        self._stop_event = stop_event
+        self._midnight_updater_stop_event = asyncio.Event()
         self._identifier_matcher = IdentifierMatcher(self)
         
         self._initialize_apis(configs)
@@ -58,7 +57,7 @@ class APIManager:
                 if self._identifier_matcher.has_conflict(cfg_model.identifier):
                     continue
                 
-                self._apis[cfg_model.identifier] = API(cfg_model, self._stop_event)
+                self._apis[cfg_model.identifier] = API(cfg_model)
                 
             except (ValueError, KeyError, TypeError) as e:
                 logger.error(f"Ошибка валидации конфигурации API: {repr(e)}")
@@ -83,13 +82,9 @@ class APIManager:
         """
         Фоновая задача, сбрасывающая счётчики запросов всех API в полночь.
         
-        Работает в бесконечном цикле до установки stop_event.
+        Работает в бесконечном цикле до установки stop_event или midnight_updater_stop_event.
         """
-        if self._stop_event is None:
-            logger.warning("APIManager: stop_event не установлен, обновление счётчиков отменено")
-            return
-
-        while not self._stop_event.is_set():
+        while not self._midnight_updater_stop_event.is_set():
             now = datetime.now()
             # Вычисляем время следующей полночи
             target = now.replace(hour=0, minute=0, second=0, microsecond=0) + timedelta(days=1)
@@ -97,11 +92,17 @@ class APIManager:
             
             await asyncio.sleep(sleep_seconds)
             
+            # Проверяем, не был ли остановлен updater во время ожидания
+            if self._midnight_updater_stop_event.is_set():
+                break
+            
             # Сбрасываем счётчики всех API
             self._reset_all_counters()
             
             logger.info("✅ Обновил счётчики запросов в день")
             await asyncio.sleep(1)  # Небольшая задержка перед следующим циклом
+        
+        logger.info("Midnight updater остановлен")
 
     def _reset_all_counters(self) -> None:
         """Сбрасывает счётчики запросов для всех API-инстансов."""
@@ -137,20 +138,43 @@ class APIManager:
             cfg: Конфигурация API для добавления
             
         Raises:
-            RuntimeError: Если менеджер не инициализирован
             Exception: Если API с таким идентификатором уже существует
         """
-        if self._stop_event is None:
-            raise RuntimeError("APIManager не инициализирован: stop_event не установлен")
-
         identifier = cfg.identifier
         
         if identifier in self._apis:
             raise Exception(f'API с таким идентификатором уже существует: {identifier}')
         
-        api = API(cfg, self._stop_event)
+        api = API(cfg)
         self._apis[identifier] = api
         asyncio.create_task(api.worker())
+    
+    def stop_all_workers(self) -> None:
+        """
+        Останавливает всех воркеров API.
+        
+        Вызывает метод stop() для каждого API-инстанса.
+        """
+        for api in self._apis.values():
+            api.stop()
+    
+    def stop_midnight_updater(self) -> None:
+        """
+        Останавливает задачу _midnight_updater.
+        
+        Устанавливает событие остановки для midnight updater, после чего
+        он завершит текущую итерацию и остановится.
+        """
+        self._midnight_updater_stop_event.set()
+        logger.info("Stop event установлен для midnight updater")
+
+    
+    def stop_all(self) -> None:
+        """
+        Останавливает все фоновые задачи: воркеры API и midnight updater.
+        """
+        self.stop_all_workers()
+        self.stop_midnight_updater()
 
     def get_identifier_matcher(self) -> IdentifierMatcher:
         """

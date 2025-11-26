@@ -2,25 +2,17 @@
 Роутер для обработки API запросов.
 """
 import asyncio
-from dataclasses import dataclass, field
-from typing import Any
 
 from fastapi import APIRouter, Request
 from fastapi.responses import JSONResponse
 
 from logger import setup_logger
 from schemas import RequestIdentifierModel, HTTP_METHODS_LIST
+from models.base_queue_worker import Item
 
 logger = setup_logger(__name__)
 
 router = APIRouter(tags=['Rate Limiter'])
-
-
-@dataclass(order=True)
-class Item:
-    """Элемент очереди запросов с приоритетом."""
-    priority: int
-    item: Any = field(compare=False)
 
 
 @router.api_route("/{url:path}", methods=HTTP_METHODS_LIST)
